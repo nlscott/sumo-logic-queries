@@ -1,0 +1,339 @@
+
+//Security Threat Detected -----------------------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE event_type = "security.threat.detected"
+    | COUNT by published, display_message, okta_user_id, targetID, outcome_result
+    | SORT by _count
+
+
+//Okta Phishing Detection-----------------------------------------------------
+_sourceCategory={{okta_log_source}} 
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE event_type = "user.authentication.auth_via_mfa"
+        AND outcome_result = "FAILURE"
+        AND outcome_reason = "FastPass declined phishing attempt"
+    | COUNT by published, display_message, okta_user_id, targetID, outcome_result
+    | SORT by _count
+
+
+//Suspicious Use of an Okta Session Cookie -------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as rawUserAgent NODROP
+    | JSON field=_raw "device.os_platform" as os_platform NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE event_type = "policy.evaluate_sign_on"
+    | WHERE outcome_result in ("ALLOW","SUCCESS")
+    | First(published) as published,
+        values(actor.alternateId) as user_id,
+        values(client_ip) as src_ip,
+        values(rawUserAgent) as user_agent,
+        values(os) as userAgentOS_list,
+        values(city) as city,
+        values(browser) as userAgentBrowser_list,
+        values(os_platform) as okta_device_os ,
+        count_distinct(browser) as dc_userAgentBrowser,
+        count_distinct(os) as dc_userAgentOS,
+        count_distinct(client_ip) as dc_src_ip, 
+        values(outcome_reason) as reason by debugContext.debugData.dtHash
+    | WHERE dc_src_ip > 1   
+        AND (dc_userAgentOS > 1 OR dc_userAgentBrowser > 1) 
+    | COUNT by published, user_id,src_ip, user_agent, userAgentBrowser_list, okta_device_os,
+    dc_userAgentOS, dc_userAgentBrowser, dc_src_ip, reason
+
+ 
+//Multiple Okta Users With Invalid Credentials From The Same IP ----------------
+_sourceCategory={{okta_log_source}} 
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as rawUserAgent NODROP
+    | JSON field=_raw "device.os_platform" as os_platform NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE outcome_reason = "INVALID_CREDENTIALS"
+    | PARSEDATE(published, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") as inMilliseconds
+    | TOLONG(inMilliseconds) as eventTimeInEpochMs
+    | FORMATDATE(eventTimeInEpochMs, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") as eventTimeHuman
+    | WHERE !(client_ip in (
+            "38.142.117.234",   //Corporate Allowed IP
+            "38.140.144.98",    //Corporate Allowed IP
+            "193.161.11.90"    //Corporate Allowed IP
+        ))
+    | min(inMilliseconds) as firstTime, 
+        max(inMilliseconds) as lastTime, 
+        count_distinct(okta_user_id) as distinct_users,
+        values(okta_user_id) as users by eventTimeHuman, first_time,
+        client_ip, displayMessage, outcome_reason, country, state, city 
+    | COUNT by users, displayMessage, outcome_reason, city, state, country, client_ip
+    | SORT by _count
+   
+
+
+
+//Okta Account Locked Out ------------------------------------------------------
+_sourceCategory={{okta_log_source}} 
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as rawUserAgent NODROP
+    | JSON field=_raw "device.os_platform" as os_platform NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE event_type = "user.account.lock"
+    | PARSEDATE(published, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") as inMilliseconds
+    | min(inMilliseconds) as firstTime,
+        max(inMilliseconds) as lastTime,
+        values(display_message) by okta_user_id, client_ip, eventType 
+    | COUNT by okta_user_id
+    | WHERE _count > 3
+
+
+//Okta Two or More Rejected Okta Pushes ----------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as rawUserAgent NODROP
+    | JSON field=_raw "device.os_platform" as os_platform NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE outcome_reason = "User rejected Okta push verify"
+
+
+// OKTA PassBleed Password extraction via SCIM ---------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as rawUserAgent NODROP
+    | JSON field=_raw "device.os_platform" as os_platform NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE event_type = "application.lifecycle.update" and outcome_reason contains "Pushing user passwords"
+    | Count by okta_user_id, targetName, outcome_reason, outcome_reason, client_ip, rawUserAgent 
+
+
+// Unapproved OKTA provider access ---------------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as rawUserAgent NODROP
+    | JSON field=_raw "device.os_platform" as os_platform NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE targetID matches "*@okta.com"
+        AND targetID != "system@okta.com"
+    | COUNT event_type, targetID, display_message, outcome_reason
+
+
+// Okta Spikes in failed logins over 30 minutes --------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "request.ipChain[0].ip" as request_ip NODROP
+    | JSON field=_raw "request.ipChain[0].geographicalContext.country" as request_country NODROP
+    | JSON field=_raw "request.ipChain[0].geographicalContext.state" as request_state NODROP
+    | JSON field=_raw "target[0].type" as target_0_type NODROP
+    | JSON field=_raw "target[*].alternateId" as target_altid NODROP
+    | JSON field=_raw "target[0].alternateId" as target0_altid NODROP
+    | JSON field=_raw "target[1].alternateId" as target1_altid NODROP
+    | JSON field=_raw "actor.alternateId" NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "outcome.result" as result nodrop
+    | JSON field=_raw "securityContext.asNumber" as asn NODROP
+    | JSON field=_raw "securityContext.asOrg" as asn_org NODROP
+    | JSON field=_raw "securityContext.isp" as isp NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as user_agent NODROP
+    | WHERE outcome_result = "FAILURE"
+    | TIMESLICE 30m
+    | values(target_altid) as users,
+        values(client_ip) as client_ip,
+        values(request_country) as country,
+        count_distinct(target_altid) as target_count, 
+        count group by request_ip,user_agent,_timeslice
+    | WHERE target_count > 10
+
+
+// OKTA Production - Multiple Push Failures In 10M -----------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE event_type = "user.authentication.auth_via_mfa"
+        OR  event_type = "OKTA_VERIFY_PUSH"
+    | TIMESLICE 10m
+    | IF (outcome_result="SUCCESS",1,0) as success
+    | IF (outcome_result="FAILURE",1,0) as failure
+    | COUNT as total_pushes,
+        sum(success) as success, 
+        sum(failure) as failure by user,_timeslice
+    | failure/total_pushes as push_fail_ratio
+    | "No Finding" as finding
+    | IF (failure=total_pushes AND total_pushes>1,"Authentication attempts not successful because multiple pushes denied",finding) as finding
+    | IF (total_pushes=0,"Multiple pushes sent and ignored",finding) as finding
+    | IF (success>0 AND total_pushes>3,"Multiple pushes sent, eventual successful authentication!",finding) as finding
+    | IF (push_fail_ratio>.1,"High push fail Ratio with successful login detected",finding) as finding
+    | WHERE finding = "High push fail Ratio with successful login detected" AND total_pushes > 1
+    | SORT by push_fail_ratio
+
+
+// Okta Productioni - MFA and Password Reset Within 8hrs -----------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE event_type = "user.account.reset_password"
+        OR  event_type = "user.mfa.factor.update"
+    | TIMESLICE 10m
+    | IF (event_type matches"*reset_password*",1,0) as reset_password
+    | IF (event_type matches"*user.mfa.factor.update*",1,0) as user_mfa_factor_update
+    | COUNT, sum(user_mfa_factor_update) as user_mfa_factor_update, sum(reset_password) as reset_password by targetID, _timeslice
+    | WHERE user_mfa_factor_update>=1 AND reset_password>=1

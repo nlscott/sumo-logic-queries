@@ -1,0 +1,128 @@
+//Revoke admin privilege -----------------------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE displayMessage = "Revoke user privilege"
+    | WHERE legacyEventType = "core.user.admin_privilege.revoked"
+    | COUNT by okta_user_id, targetID, outcome_result
+    | SORT by _count
+
+
+
+//Revoke user privilege -----------------------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE displayMessage = "Revoke user privilege"
+    | COUNT by okta_user_id, targetID, outcome_result
+    | SORT by _count
+
+
+
+// REMOVE DEVICE FROM USER -----------------------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE displayMessage = "Revoke user privilege"
+    | COUNT by okta_user_id, targetID, outcome_result
+    | SORT by _count
+
+
+
+// RESEST FACTOR FOR USER ------------------------------------------------------
+_sourceCategory={{okta_log_source}}
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE displayMessage = "Reset factor for user"
+    | COUNT by display_message, okta_user_id, targetID,outcome_result
+    | SORT by _count
+
+
+
+
+// REMOVE DEVICE FROM USER -----------------------------------------------------
+_sourceCategory={{okta_log_source}} 
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as deviceID NODROP
+    | JSON field=_raw "target[0].displayName" as deviceName NODROP
+    | JSON field=_raw "target[0].detailEntry.osPlatform" as devicePlatform NODROP
+    | JSON field=_raw "target[1].alternateId" as targetID NODROP
+    | JSON field=_raw "target[1].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE displayMessage = "Remove device from user"
+    | COUNT by display_message, okta_user_id, targetID,outcome_result
+    | SORT by _count
+    
