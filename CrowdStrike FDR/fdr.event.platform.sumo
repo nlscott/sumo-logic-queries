@@ -1,0 +1,69 @@
+// SSH connections by computer -------------------------------------------------
+_sourceCategory="security/fdr" 
+    | WHERE event_Platform = "Mac"
+    | LOOKUP ComputerName 
+        FROM path://"{{path-to-lookup-table}}" 
+        ON aid = aid
+    | WHERE event_simplename = "NetworkListenIP4"
+    | WHERE LocalPort = "22"
+    | COUNT by ComputerName
+
+
+// processid by copmuter--------------------------------------------------------
+_sourceCategory="security/fdr" 
+    | WHERE event_Platform = "Mac"
+    | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
+    | WHERE event_simplename = "ProcessRollup2"
+    | WHERE ParentBaseFileName = "Signal"
+    | COUNT by ComputerName
+
+
+// app installed by computer ---------------------------------------------------
+_sourceCategory="security/fdr"
+    | WHERE event_Platform = "Mac"
+    | WHERE ! (isBlank(appname))
+    | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
+    | WHERE appname = "AnyDesk.app"
+    | COUNT by ComputerName
+
+
+// HOST files changed ----------------------------------------------------------
+_sourceCategory="security/fdr" 
+    | WHERE event_Platform = "Mac"
+    | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
+    | WHERE event_simplename = "CriticalFileModified"
+    | WHERE TargetFileName  matches "/private/etc/hosts"
+    | COUNT by ComputerName
+
+
+//  SSH host changed -----------------------------------------------------------
+_sourceCategory="security/fdr" 
+    | WHERE event_Platform = "Mac"
+    | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
+    | WHERE event_simplename = "CriticalFileModified"
+    | WHERE TargetFileName  matches "/Users/*/.ssh/known_hosts"
+    | COUNT by ComputerName
+
+
+// TCC changes -----------------------------------------------------------------
+_sourceCategory="security/fdr" 
+    | WHERE event_Platform = "Mac"
+    | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
+    | WHERE event_simplename = "CriticalFileModified"
+    | WHERE TargetFileName  matches "*/Library/Application Support/com.apple.TCC/TCC.db"
+    | COUNT by ComputerName
+
+
+
+// FDR Quarantined Files -------------------------------------------------------
+_sourceCategory="security/fdr" 
+    | WHERE event_Platform = "Mac"
+    | LOOKUP ComputerName 
+        FROM path://"{{path-to-lookup-table}}" 
+        ON aid = aid
+    | WHERE event_simplename = "QuarantinedFileState"
+    | TOLONG(timestamp) as eventTimeInEpochMs
+    | FORMATDATE(eventTimeInEpochMs, "MM-dd-yyyy HH:MM:SS") as eventTimeHuman
+    | JSON "aip" as ipAddress
+    | COUNT by eventTimeHuman, ComputerName, ipAddress, ImageFileName
+    | FIELDS - _count
