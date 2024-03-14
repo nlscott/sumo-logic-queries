@@ -1,5 +1,5 @@
 // SSH connections by computer -------------------------------------------------
-_sourceCategory="security/fdr" 
+_sourceCategory={{fdr_log_source}}
     | WHERE event_Platform = "Mac"
     | LOOKUP ComputerName 
         FROM path://"{{path-to-lookup-table}}" 
@@ -10,7 +10,7 @@ _sourceCategory="security/fdr"
 
 
 // processid by copmuter--------------------------------------------------------
-_sourceCategory="security/fdr" 
+_sourceCategory={{fdr_log_source}}
     | WHERE event_Platform = "Mac"
     | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
     | WHERE event_simplename = "ProcessRollup2"
@@ -19,7 +19,7 @@ _sourceCategory="security/fdr"
 
 
 // app installed by computer ---------------------------------------------------
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | WHERE event_Platform = "Mac"
     | WHERE ! (isBlank(appname))
     | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
@@ -28,7 +28,7 @@ _sourceCategory="security/fdr"
 
 
 // HOST files changed ----------------------------------------------------------
-_sourceCategory="security/fdr" 
+_sourceCategory={{fdr_log_source}}
     | WHERE event_Platform = "Mac"
     | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
     | WHERE event_simplename = "CriticalFileModified"
@@ -37,7 +37,7 @@ _sourceCategory="security/fdr"
 
 
 //  SSH host changed -----------------------------------------------------------
-_sourceCategory="security/fdr" 
+_sourceCategory={{fdr_log_source}}
     | WHERE event_Platform = "Mac"
     | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
     | WHERE event_simplename = "CriticalFileModified"
@@ -46,7 +46,7 @@ _sourceCategory="security/fdr"
 
 
 // TCC changes -----------------------------------------------------------------
-_sourceCategory="security/fdr" 
+_sourceCategory={{fdr_log_source}}
     | WHERE event_Platform = "Mac"
     | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
     | WHERE event_simplename = "CriticalFileModified"
@@ -56,7 +56,7 @@ _sourceCategory="security/fdr"
 
 
 // FDR Quarantined Files -------------------------------------------------------
-_sourceCategory="security/fdr" 
+_sourceCategory={{fdr_log_source}}
     | WHERE event_Platform = "Mac"
     | LOOKUP ComputerName 
         FROM path://"{{path-to-lookup-table}}" 

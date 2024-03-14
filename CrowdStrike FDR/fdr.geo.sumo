@@ -1,5 +1,5 @@
 // FDR GEOLOCATION
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | DEDUP by ComputerName
     | WHERE ! (isBlank(aip))
     | WHERE ! (isBlank(ComputerName))
@@ -10,7 +10,7 @@ _sourceCategory="security/fdr"
 
 
 // computer table
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | DEDUP by ComputerName
     | WHERE ! (isBlank(aip))
     | WHERE ! (isBlank(ComputerName))
@@ -20,7 +20,7 @@ _sourceCategory="security/fdr"
 
 
 // count computers
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | DEDUP by ComputerName
     | WHERE ! (isBlank(aip))
     | WHERE ! (isBlank(ComputerName))
@@ -29,7 +29,7 @@ _sourceCategory="security/fdr"
 
 
 // mount volumes
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | WHERE ! (isBlank(volumename))
     | WHERE !(volumename in (
             "Macintosh HD",   
@@ -44,20 +44,20 @@ _sourceCategory="security/fdr"
 
 
 // count crowdstrike agent version
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | WHERE ! (isBlank(version))
     | COUNT by version
 
 
 // Team IDS
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | WHERE ! (isBlank(teamid))
         AND ! (teamid = "-")
     | COUNT by teamid
     | SORT by _count
 
 // top dns request
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | WHERE ! (isBlank(domainname))
     | WHERE event_simpleName = "DnsRequest"
     | COUNT as eventCount by domainname
@@ -65,7 +65,7 @@ _sourceCategory="security/fdr"
 
 
 // SuspiciousDnsRequest
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | WHERE ! (isBlank(domainname))
     | JSON "aid" as dns.aid
     | WHERE event_simpleName = "SuspiciousDnsRequest"
@@ -74,7 +74,7 @@ _sourceCategory="security/fdr"
 
 
 // map computername to aid
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | JSON "ComputerName" NODROP
     | DEDUP by ComputerName
     | WHERE ! (isBlank(ComputerName))
@@ -84,7 +84,7 @@ _sourceCategory="security/fdr"
 
 // Create a lookup table
 // create a sumo logic lookup table and repace the value in "path://"
-_sourceCategory="security/fdr"
+_sourceCategory={{fdr_log_source}}
     | DEDUP by ComputerName
     | WHERE ! (isBlank(ComputerName))
     | WHERE ! (isBlank(aid))

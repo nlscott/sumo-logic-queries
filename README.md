@@ -1,6 +1,8 @@
 # Sumo Logic Queries
 
-General collection of Sumo Logic Queries for IT and Security
+General collection of Sumo Logic Queries for IT and Security. In most case you need to update the `_sourceCategory={{log_source}}` line of each query to point to your source categories. 
+
+
 
 ![001](images/001.png)
 
