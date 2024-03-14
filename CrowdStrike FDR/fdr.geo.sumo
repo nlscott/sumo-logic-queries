@@ -1,0 +1,92 @@
+// FDR GEOLOCATION
+_sourceCategory="security/fdr"
+    | DEDUP by ComputerName
+    | WHERE ! (isBlank(aip))
+    | WHERE ! (isBlank(ComputerName))
+    | json "aip" as remote_ip
+    | geoip remote_ip
+    | count by latitude, longitude
+    | sort _count
+
+
+// computer table
+_sourceCategory="security/fdr"
+    | DEDUP by ComputerName
+    | WHERE ! (isBlank(aip))
+    | WHERE ! (isBlank(ComputerName))
+    | json "aip" as remote_ip
+    | COUNT by ComputerName,AgentVersion, Version, remote_ip, City, Country
+    | SORT by ComputerName asc
+
+
+// count computers
+_sourceCategory="security/fdr"
+    | DEDUP by ComputerName
+    | WHERE ! (isBlank(aip))
+    | WHERE ! (isBlank(ComputerName))
+    | COUNT by ComputerName
+    | SUM(_count)
+
+
+// mount volumes
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(volumename))
+    | WHERE !(volumename in (
+            "Macintosh HD",   
+            "Macintosh HD - Data",    
+            "Preboot",
+            "qual",
+            "iSCPreboot",
+            "xART"
+            ))
+    | COUNT by volumename
+    | SORT by _count
+
+
+// count crowdstrike agent version
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(version))
+    | COUNT by version
+
+
+// Team IDS
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(teamid))
+        AND ! (teamid = "-")
+    | COUNT by teamid
+    | SORT by _count
+
+// top dns request
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(domainname))
+    | WHERE event_simpleName = "DnsRequest"
+    | COUNT as eventCount by domainname
+    | TOP 10 domainname by eventCount
+
+
+// SuspiciousDnsRequest
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(domainname))
+    | JSON "aid" as dns.aid
+    | WHERE event_simpleName = "SuspiciousDnsRequest"
+    | COUNT as eventCount by domainname, dns.aid
+    | TOP 10 domainname, dns.aid  by eventCount
+
+
+// map computername to aid
+_sourceCategory="security/fdr"
+    | JSON "ComputerName" NODROP
+    | DEDUP by ComputerName
+    | WHERE ! (isBlank(ComputerName))
+    | COUNT by ComputerName, aid
+
+
+
+// Create a lookup table
+// create a sumo logic lookup table and repace the value in "path://"
+_sourceCategory="security/fdr"
+    | DEDUP by ComputerName
+    | WHERE ! (isBlank(ComputerName))
+    | WHERE ! (isBlank(aid))
+    | COUNT by ComputerName, aid
+    | SAVE path://"{{path to lookup table}}"

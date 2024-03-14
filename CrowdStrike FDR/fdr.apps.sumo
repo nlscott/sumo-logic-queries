@@ -1,0 +1,90 @@
+_sourceCategory="security/fdr"
+    | DEDUP by aid
+    | WHERE ! (isBlank(apparchitecture))
+    | WHERE ! (isBlank(aid))
+    | COUNT by ComputerName, aid, SystemSerialNumber
+
+// apps by location
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(appname))
+    | WHERE ! (AppPath matches "/System/Library/*")
+        AND ! (AppPath matches "/System/Applications/Utilities/*")
+        AND ! (AppPath matches "/System/Applications/Utilities/*")
+        AND ! (AppPath matches "/System/Volumes/Data/Library/*")
+        AND ! (AppPath matches "System/Volumes/Data/usr/local/*")
+        AND ! (AppPath matches "/System/Volumes/Data/Users/*/Library/*")
+    | COUNT by appname, AppPath
+    | SORT by _count
+
+
+// FIND Uncommon app paths -----------------------------------------------------
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(appname))
+    | WHERE (AppPath matches "/System/Volumes/Data/Users/*/Applications/*")
+        OR  (AppPath matches "/System/Volumes/Data/Users/*/Downloads/*")
+        OR  (AppPath matches "/System/Volumes/Data/Users/*/Downloads/*")
+        OR  (AppPath matches "/System/Volumes/Data/Users/*/Documents/*")
+    | WHERE ! (appname matches "Sheetsapp")
+        AND ! (appname matches "Docs.app")
+        AND ! (appname matches "Slides.app")
+        AND ! (appname matches "Gmail.app")
+    | COUNT by appname
+    | SORT by _count
+
+
+// lookup computer by appname
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(appname))
+    | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
+    // ENTER APP NAME
+    | WHERE appname = "Safari.app"
+    | COUNT by ComputerName, appname, AppPath
+
+
+// App installs by app name-----------------------------------------------------
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(appname))
+    | WHERE appname = "zoom.us.app"
+    | COUNT by AppVersion
+    | SORT by _count
+
+   // ENTER APP NAME
+_sourceCategory="security/fdr"
+    | WHERE ! (isBlank(appname))
+    | LOOKUP ComputerName from path://"{{path-to-lookup-table}}" on aid=aid
+    | WHERE appname = "zoom.us.app"
+    | COUNT by AppVersion, ComputerName, appname, AppPath
+
+// Non US/UK Computers ---------------------------------------------------------
+_sourceCategory="security/fdr" AND "Country"
+    | JSON "aip" as remote_ip 
+    | JSON "Country" as country 
+    | JSON "City" as city 
+    | JSON "ComputerName" as computerName
+    | JSON "AgentVersion" as agentVersion  
+    | JSON "Version" as osVersion  
+    | DEDUP by remote_ip
+    | WHERE ! (isBlank(remote_ip))
+    | WHERE ! (isBlank(computerName))
+    | WHERE ! (isBlank(country))
+    | WHERE !(country Matches "United States")
+    | WHERE !(country Matches "United Kingdom")
+    | COUNT by _messagetime, computerName, agentVersion, osVersion, remote_ip, city, country
+    | SORT by _messagetime asc
+
+
+_sourceCategory="security/fdr" AND "Country"
+    | JSON "aip" as remote_ip 
+    | JSON "Country" as country 
+    | JSON "City" as city 
+    | JSON "ComputerName" as computerName
+    | JSON "AgentVersion" as agentVersion  
+    | JSON "Version" as osVersion  
+    | DEDUP by remote_ip
+    | WHERE ! (isBlank(remote_ip))
+    | WHERE ! (isBlank(computerName))
+    | WHERE ! (isBlank(country))
+    | WHERE !(country Matches "United States")
+    | WHERE !(country Matches "United Kingdom")
+    | VALUES(remote_ip) as remote_ips, count(ips) as number_of_ips by computerName,country,remote_ips,number_of_ips
+    | SORT by number_of_ips
