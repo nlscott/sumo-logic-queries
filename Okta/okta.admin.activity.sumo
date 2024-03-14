@@ -1,0 +1,143 @@
+// OKTA API TOKEN CREATED ------------------------------------------------------
+_sourcecategory = {{okta_log_source}}
+    | JSON "client", "geographicalContext", "displayMessage", "eventType", "outcome", "actor", "target" NODROP 
+    | JSON field=actor "alternateId" AS user NODROP
+    | JSON field=client "ipAddress" AS ipAddress NODROP
+    | JSON field=client "geographicalContext.city" AS city NODROP
+    | JSON field=outcome "result" AS result NODROP
+    | JSON field=target "[0].displayName" AS displayName NODROP
+    | WHERE eventtype = "system.api_token.create"
+    | COUNT by user, ipAddress, city, displayMessage, eventType, result, displayName
+
+
+// OKTA ADMIN LOGIN ------------------------------------------------------------
+_sourcecategory = {{okta_log_source}}
+    | JSON "client", "geographicalContext", "displayMessage", "eventType", "outcome", "actor", "target" NODROP 
+    | JSON field=actor "alternateId" AS user NODROP
+    | JSON field=client "ipAddress" AS ipAddress NODROP
+    | JSON field=client "geographicalContext.city" AS city NODROP
+    | JSON field=outcome "result" AS result NODROP
+    | JSON field=target "[0].displayName" AS displayName NODROP
+    | WHERE displayMessage = "User accessing Okta admin app"
+    | COUNT by user, ipAddress, city, displayMessage, eventType, result, displayName
+
+
+// ADMIN ACCESS ----------------------------------------------------------------
+_sourceCategory={{okta_log_source}}
+    | json field=_raw "eventType" as event_type
+    | JSON field=_raw "outcome.result" as outcome_result
+    | JSON field=_raw "displayMessage" as display_message
+    | JSON field=_raw "published"
+    | JSON field=_raw "actor.displayName" as okta_user_name
+    | JSON field=_raw "actor.alternateId" as okta_user_id
+    | JSON field=_raw "actor.type"
+    | JSON field=_raw "severity" as severity 
+    | JSON field=_raw "client.userAgent.os" as os 
+    | JSON field=_raw "client.userAgent.browser" as browser
+    | JSON field=_raw "client.device" as device
+    | JSON field=_raw "client.ipAddress" as client_ip
+    | JSON field=_raw "client.geographicalContext.country" as country
+    | JSON field=_raw "client.geographicalContext.state" as state 
+    | JSON field=_raw "client.geographicalContext.city" as city
+    | WHERE eventtype = "user.session.access_admin_app"
+    | WHERE if ("*" = "*", true, severity matches "*") 
+        AND if ("*" = "*", true, okta_user_id matches "*") 
+        AND if ("*" = "*", true, outcome_result matches "*") 
+        AND if ("*" = "*", true, event_type matches "*") 
+        AND if ("*" = "*", true, city matches "*") 
+        AND if ("*" = "*", true, state matches "*") 
+        AND if ("*" = "*", true, country matches "*")
+    | COUNT by okta_user_id, city, display_message, outcome_result
+
+
+// ADMIN ACCESS ----------------------------------------------------------------
+_sourceCategory={{okta_log_source}}
+        | JSON field=_raw "eventType" as event_type
+        | JSON field=_raw "outcome.result" as outcome_result
+        | JSON field=_raw "displayMessage" as display_message
+        | JSON field=_raw "published"
+        | JSON field=_raw "actor.displayName" as okta_user_name
+        | JSON field=_raw "actor.alternateId" as okta_user_id
+        | JSON field=_raw "actor.type"
+        | JSON field=_raw "severity" as severity 
+        | JSON field=_raw "client.userAgent.os" as os 
+        | JSON field=_raw "client.userAgent.browser" as browser
+        | JSON field=_raw "client.device" as device
+        | JSON field=_raw "client.ipAddress" as client_ip
+        | JSON field=_raw "client.geographicalContext.country" as country
+        | JSON field=_raw "client.geographicalContext.state" as state 
+        | JSON field=_raw "client.geographicalContext.city" as city
+        | WHERE eventtype = "user.session.access_admin_app"
+        | WHERE if ("*" = "*", true, severity matches "*") 
+                AND if ("*" = "*", true, okta_user_id matches "*") 
+                AND if ("*" = "*", true, outcome_result matches "*") 
+                AND if ("*" = "*", true, event_type matches "*") 
+                AND if ("*" = "*", true, city matches "*") 
+                AND if ("*" = "*", true, state matches "*") 
+                AND if ("*" = "*", true, country matches "*")
+        | WHERE !(client_ip in (
+            "11.22.33.44",   //Corporate IP
+            "55.66.77.88"    //Corporate IP
+            ))
+        | COUNT by 
+                okta_user_name, okta_user_id, display_message, 
+                outcome_result, city, state, country, browser, os
+
+
+// email is not corporate -------------------------------------------------------
+// replace corporate.com with your company domain
+_sourceCategory={{okta_log_source}}
+        | JSON field=_raw "eventType" as event_type
+        | JSON field=_raw "outcome.result" as outcome_result
+        | JSON field=_raw "displayMessage" as display_message
+        | JSON field=_raw "published"
+        | JSON field=_raw "actor.displayName" as okta_user_name
+        | JSON field=_raw "actor.alternateId" as okta_user_id
+        | JSON field=_raw "actor.type"
+        | JSON field=_raw "severity" as severity 
+        | JSON field=_raw "client.userAgent.os" as os 
+        | JSON field=_raw "client.userAgent.browser" as browser
+        | JSON field=_raw "client.device" as device
+        | JSON field=_raw "client.ipAddress" as client_ip
+        | JSON field=_raw "client.geographicalContext.country" as country
+        | JSON field=_raw "client.geographicalContext.state" as state 
+        | JSON field=_raw "client.geographicalContext.city" as city
+        | WHERE eventtype = "user.session.access_admin_app"
+        | WHERE if ("*" = "*", true, severity matches "*") 
+                AND if ("*" = "*", true, okta_user_id matches "*") 
+                AND if ("*" = "*", true, outcome_result matches "*") 
+                AND if ("*" = "*", true, event_type matches "*") 
+                AND if ("*" = "*", true, city matches "*") 
+                AND if ("*" = "*", true, state matches "*") 
+                AND if ("*" = "*", true, country matches "*")
+        | WHERE !(okta_user_id matches (*corporate.com))
+        | COUNT by okta_user_id
+
+
+//  OKTA EVENTS TRANSPOSE ------------------------------------------------------
+_sourceCategory=security/okta  
+        | JSON field=_raw "eventType" as event_type
+        | JSON field=_raw "outcome.result" as outcome_result
+        | JSON field=_raw "published"as published_time
+        | JSON field=_raw "actor.displayName" as okta_user_name
+        | JSON field=_raw "actor.alternateId" as okta_user_id
+        | JSON field=_raw "actor.type" 
+        | JSON field=_raw "severity" as severity 
+        | JSON field=_raw "target[0].displayName" as app_name
+        | JSON field=_raw "target[0].type" as app_type
+        | JSON field=_raw "client.ipAddress" as client_ip
+        | JSON field=_raw "client.geographicalContext.city" as city NODROP
+        | JSON field=_raw "client.geographicalContext.state" as state NODROP
+        | JSON field=_raw "client.geographicalContext.country" as country NODROP
+        | JSON field=_raw "client.geographicalContext.postalCode" as postal_code NODROP
+        | JSON field=_raw "severity"
+        | WHERE if ("*" = "*", true, severity matches "*") 
+                AND if ("*" = "*", true, okta_user_id matches "*") 
+                AND if ("*" = "*", true, outcome_result matches "*") 
+                AND if ("*" = "*", true, event_type matches "*") 
+                AND if ("*" = "*", true, city matches "*") 
+                AND if ("*" = "*", true, state matches "*") 
+                AND if ("*" = "*", true, country matches "*")
+        | TIMESLICE 1h 
+        | COUNT by _timeslice, event_type
+        | TRANSPOSE row _timeslice column event_type

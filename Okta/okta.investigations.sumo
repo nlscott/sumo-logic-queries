@@ -119,9 +119,9 @@ _sourceCategory={{okta_log_source}}
     | TOLONG(inMilliseconds) as eventTimeInEpochMs
     | FORMATDATE(eventTimeInEpochMs, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") as eventTimeHuman
     | WHERE !(client_ip in (
-            "38.142.117.234",   //Corporate Allowed IP
-            "38.140.144.98",    //Corporate Allowed IP
-            "193.161.11.90"    //Corporate Allowed IP
+            "11.22.33.44",    //Corporate Allowed IP
+            "55.66.77.88",    //Corporate Allowed IP
+            "99.00.11.22"     //Corporate Allowed IP
         ))
     | min(inMilliseconds) as firstTime, 
         max(inMilliseconds) as lastTime, 
