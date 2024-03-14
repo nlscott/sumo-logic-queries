@@ -1,0 +1,20 @@
+// User Reported phishing events
+_sourceCategory={{google_log_source}}
+    | JSON "alertId", "createTime", "data", "metadata", "source", "type" NODROP 
+    | JSON field=data "maliciousEntity.fromHeader" AS  fromHeader NODROP
+    | JSON field=data "messages[0].messageId" AS  messageId NODROP
+    | JSON field=data "messages[0].messageBodySnippet" AS  messageBodySnippet NODROP
+    | JSON field=data "messages[0].md5HashSubject" AS  md5HashSubject NODROP
+    | JSON field=data "messages[0].subjectText" AS  subjectText NODROP
+    | JSON field=data "messages[0].attachmentsSha256Hash" AS  attachmentsSha256Hash NODROP
+    | JSON field=data "messages[0].recipient" AS  recipient NODROP
+    | JSON field=data "messages[0].sentTime" AS  sentTime NODROP
+    | JSON field=_raw "metadata.severity" AS  severity NODROP
+    | JSON field=_raw "metadata.status" AS  status NODROP
+    | WHERE source = "Gmail phishing"
+    | COUNT by 
+        createTime, sentTime, source, 
+        type, alertId, severity, 
+        status, fromHeader, recipient, 
+        messageId, subjectText, messageBodySnippet, 
+        md5HashSubject, attachmentsSha256Hash

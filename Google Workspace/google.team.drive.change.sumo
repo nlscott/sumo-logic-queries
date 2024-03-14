@@ -1,0 +1,110 @@
+// non corporate Team drive changes --------------------------------------------
+// repalce corporate.com with your company domain
+_sourceCategory={{google_log_source}}
+    | JSON "id", "actor", "events", "ipAddress" NODROP
+    | JSON field=id "time" as time NODROP
+    | JSON field=actor "email" as email NODROP
+    | JSON field=events "[0]type" as eventType 
+    | JSON field=events "[0]name" as eventName 
+    | JSON field=_raw "events[0].parameters[0].value" as targetUser NODROP
+    | JSON field=_raw "events[0].parameters[2].value" as membershipChange NODROP
+    | JSON field=_raw "events[0].parameters[4].multiValue" as AddRole NODROP
+    | JSON field=_raw "events[0].parameters[5].multiValue" as newValue NODROP
+    | JSON field=_raw "events[0].parameters[6].value" as oldVisibility NODROP
+    | JSON field=_raw "events[0].parameters[10].value" as type NODROP
+    | JSON field=_raw "events[0].parameters[12].value" as driveName NODROP
+    | JSON field=_raw "events[0].parameters[15].value" as driveID NODROP
+    | JSON field=_raw "events[0].parameters[16].value" as team_drive_id NODROP
+    | WHERE eventName = "team_drive_membership_change"
+    | WHERE ! (targetUser matches "*corporate.com")
+    | COUNT by time,email, ipAddress, eventType, eventName, membershipChange, targetUser, AddRole, type, driveName, driveID
+    | SORT by time
+
+
+// non corporate Team drive changes, user added to drive -----------------------
+_sourceCategory={{google_log_source}}
+    | JSON "id", "actor", "events", "ipAddress" NODROP
+    | JSON field=id "time" as time NODROP
+    | JSON field=actor "email" as email NODROP
+    | JSON field=events "[0]type" as eventType 
+    | JSON field=events "[0]name" as eventName 
+    | JSON field=_raw "events[0].parameters[0].value" as targetUser NODROP
+    | JSON field=_raw "events[0].parameters[2].value" as membershipChange NODROP
+    | JSON field=_raw "events[0].parameters[4].multiValue" as AddRole NODROP
+    | JSON field=_raw "events[0].parameters[5].multiValue" as newValue NODROP
+    | JSON field=_raw "events[0].parameters[6].value" as oldVisibility NODROP
+    | JSON field=_raw "events[0].parameters[10].value" as type NODROP
+    | JSON field=_raw "events[0].parameters[12].value" as driveName NODROP
+    | JSON field=_raw "events[0].parameters[15].value" as driveID NODROP
+    | JSON field=_raw "events[0].parameters[16].value" as team_drive_id NODROP
+    | WHERE membershipChange = "add_to_team_drive"
+    | WHERE ! (targetUser matches "*corporate.com")
+    | COUNT by time,email, ipAddress, eventType, eventName, membershipChange, targetUser, AddRole, type, driveName, driveID
+    | SORT by time
+
+
+// non-corporate user added to team drive, transpose by 1h ---------------------
+_sourceCategory={{google_log_source}}
+    | JSON "id", "actor", "events", "ipAddress" NODROP
+    | JSON field=id "time" as time NODROP
+    | JSON field=actor "email" as email NODROP
+    | JSON field=events "[0]type" as eventType 
+    | JSON field=events "[0]name" as eventName 
+    | JSON field=_raw "events[0].parameters[0].value" as targetUser NODROP
+    | JSON field=_raw "events[0].parameters[2].value" as membershipChange NODROP
+    | JSON field=_raw "events[0].parameters[4].multiValue" as AddRole NODROP
+    | JSON field=_raw "events[0].parameters[5].multiValue" as newValue NODROP
+    | JSON field=_raw "events[0].parameters[6].value" as oldVisibility NODROP
+    | JSON field=_raw "events[0].parameters[10].value" as type NODROP
+    | JSON field=_raw "events[0].parameters[12].value" as driveName NODROP
+    | JSON field=_raw "events[0].parameters[15].value" as driveID NODROP
+    | JSON field=_raw "events[0].parameters[16].value" as team_drive_id NODROP
+    | WHERE membershipChange = "add_to_team_drive"
+    | WHERE ! (targetUser matches "*corporate.com")
+    | TIMESLICE 1h 
+    | COUNT by _timeslice, targetUser
+    | TRANSPOSE row _timeslice column targetUser
+    # | COUNT by time,email, ipAddress, eventType, eventName, membershipChange, targetUser, AddRole, type, driveName, driveID
+    # | SORT by time
+
+   
+// drive membership change -----------------------------------------------------
+_sourceCategory={{google_log_source}}
+    | JSON "id", "actor", "events", "ipAddress" NODROP
+    | JSON field=id "time" as time NODROP
+    | JSON field=actor "email" as email NODROP
+    | JSON field=events "[0]type" as eventType 
+    | JSON field=events "[0]name" as eventName 
+    | JSON field=_raw "events[0].parameters[0].value" as targetUser NODROP
+    | JSON field=_raw "events[0].parameters[2].value" as membershipChange NODROP
+    | JSON field=_raw "events[0].parameters[4].multiValue" as AddRole NODROP
+    | JSON field=_raw "events[0].parameters[5].multiValue" as newValue NODROP
+    | JSON field=_raw "events[0].parameters[6].value" as oldVisibility NODROP
+    | JSON field=_raw "events[0].parameters[10].value" as type NODROP
+    | JSON field=_raw "events[0].parameters[12].value" as driveName NODROP
+    | JSON field=_raw "events[0].parameters[15].value" as driveID NODROP
+    | JSON field=_raw "events[0].parameters[16].value" as team_drive_id NODROP
+    | WHERE eventName = "team_drive_membership_change"
+    | COUNT by membershipChange
+
+
+// drive membership change by hour ---------------------------------------------
+_sourceCategory={{google_log_source}}
+    | JSON "id", "actor", "events", "ipAddress" NODROP
+    | JSON field=id "time" as time NODROP
+    | JSON field=actor "email" as email NODROP
+    | JSON field=events "[0]type" as eventType 
+    | JSON field=events "[0]name" as eventName 
+    | JSON field=_raw "events[0].parameters[0].value" as targetUser NODROP
+    | JSON field=_raw "events[0].parameters[2].value" as membershipChange NODROP
+    | JSON field=_raw "events[0].parameters[4].multiValue" as AddRole NODROP
+    | JSON field=_raw "events[0].parameters[5].multiValue" as newValue NODROP
+    | JSON field=_raw "events[0].parameters[6].value" as oldVisibility NODROP
+    | JSON field=_raw "events[0].parameters[10].value" as type NODROP
+    | JSON field=_raw "events[0].parameters[12].value" as driveName NODROP
+    | JSON field=_raw "events[0].parameters[15].value" as driveID NODROP
+    | JSON field=_raw "events[0].parameters[16].value" as team_drive_id NODROP
+    | WHERE eventName = "team_drive_membership_change"
+    | TIMESLICE 1h 
+    | COUNT by _timeslice, membershipChange
+    | TRANSPOSE row _timeslice column membershipChange
