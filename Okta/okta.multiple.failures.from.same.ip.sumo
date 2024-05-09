@@ -1,0 +1,35 @@
+_sourceCategory=security/okta  
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgent.rawUserAgent" as rawUserAgent NODROP
+    | JSON field=_raw "device.os_platform" as os_platform NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | WHERE outcome_reason = "INVALID_CREDENTIALS"
+    | PARSEDATE(published, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") as inMilliseconds
+    | TOLONG(inMilliseconds) as eventTimeInEpochMs
+    | FORMATDATE(eventTimeInEpochMs, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") as eventTimeHuman
+    | WHERE !(client_ip in (
+            "xx.xx.xx.xx",   //enter corp IP
+            "xx.xx.xxx.xx"    //enter corp IP
+        ))
+    | TIMESLICE 1h
+    | count_distinct(okta_user_id) as unique_accounts,
+        values(okta_user_id) as users,
+        values(outcome_reason) as outcome_reason by _timeslice, client_ip
+    | WHERE unique_accounts > 1 
