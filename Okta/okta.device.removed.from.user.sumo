@@ -1,0 +1,29 @@
+_sourceCategory=security/okta
+    | JSON field=_raw "eventType" as event_type NODROP
+    | Json field=_raw "debugContext" as debug
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "outcome.reason" as outcome_reason NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as deviceID NODROP
+    | JSON field=_raw "target[0].displayName" as deviceName NODROP
+    | JSON field=_raw "target[1].alternateId" as targetID NODROP
+    | JSON field=_raw "target[1].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.userAgentrawUserAgent" as userAgent NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | JSON field=_raw "debugContext.debugData.behaviors" as behaviors NODROP
+    | WHERE event_type = "device.user.remove"
+    | TOLONG(_messageTime) as eventTimeInEpochMs
+    | FORMATDATE(eventTimeInEpochMs, "MM-dd-yyyy HH:MM:SS") as eventTimeHuman
+    | COUNT by eventTimeHuman, okta_user_id, display_message, targetID, deviceName, outcome_result, client_ip, browser, os, city, country
+    | SORT by eventTimeHuman
