@@ -1,0 +1,72 @@
+// ---------------------------------------------------------------------------------
+// Mismatch Between Source and Response for Verify Push Request ------------------------------------
+
+// Description
+// A detection opportunity arises when an adversary that has stolen a user password attempts to trick 
+// a user into accepting a Okta Verify Push request. The following analytic identifies variations 
+// in client-based values for source and response events to identify suspicious request behavior. 
+// The detection is enhanced if the org is evaluating behavior conditions in sign-on policies 
+// using Okta Behavior Detection.
+
+// The query below: 
+// Groups by SessionID and retrieves any system.push.send_factor_verify_push events 
+// (the source of the push) and user.authentication.auth_via_mfa events where the factor 
+// is OKTA_VERIFY_PUSH - (the user response to the push). Counts the total number of push events, 
+// successful authentication events, and any push sources where the client is a new device.
+// Creates a ratio of successful sign-ins to pushes. If the ratio (currently tuned aggressively) 
+// indicates push spam, or if a user has rejected a push, the detection proceeds to evaluate 
+// whether there is more than one IP address used during the session (session roaming) and 
+// the presence of both a new IP and new device during the session.
+
+_sourceCategory=security/okta
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "outcome.result" as outcome_result NODROP
+    | JSON field=_raw "displayMessage" as display_message NODROP
+    | JSON field=_raw "published" as published NODROP
+    | JSON field=_raw "actor.displayName" as okta_user_name NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "actor.type" NODROP
+    | JSON field=_raw "severity" as severity NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "target[0].displayName" as targetName NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.userAgent.browser" as browser NODROP
+    | JSON field=_raw "client.device" as device NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    | JSON field=_raw "client.geographicalContext.country" as country NODROP
+    | JSON field=_raw "client.geographicalContext.city" as city NODROP
+    | JSON field=_raw "client.geographicalContext.state" as state NODROP
+    | JSON field=_raw "debugContext.debugData.factor" as factor NODROP
+    | JSON field=_raw "debugContext.debugData.behaviors" as behaviors NODROP
+    | JSON field=_raw "debugContext.debugData.privilegeGranted" as privilegeGranted NODROP
+    | JSON field=_raw "authenticationContext.externalSessionId" as externalSessionId NODROP
+    | WHERE event_type in ("system.push.send_factor_verify_push",
+        "user.authentication.auth_via_mfa") 
+        OR factor in ("OKTA_VERIFY_PUSH")
+    | TIMESLICE 10s
+    | GEOIP client_ip
+    | IF (event_type = "system.push.send_factor_verify_push" 
+        AND outcome_result = "SUCCESS",1,0) as total_pushes
+    | IF (event_type = "user.authentication.auth_via_mfa" 
+        AND outcome_result = "SUCCESS",1,0) as total_successes
+    | IF (event_type = "user.authentication.auth_via_mfa" 
+        AND outcome_result = "FAILURE",1,0) as total_rejected
+    | IF (event_type = "system.push.send_factor_verify_push" 
+        AND behaviors matches "*New Device=POSITIVE*",1,0) as suspect_device_from_source
+    | IF (event_type = "system.push.send_factor_verify_push" 
+        AND behaviors matches "*New IP=POSITIVE*",1,0) as suspect_ip_from_source
+    | IF (event_type = "system.push.send_factor_verify_push",client_ip,"") as src
+    | IF (event_type = "user.authentication.auth_via_mfa",client_ip,"") as dest
+    | SUM(total_pushes) as total_pushes,
+        SUM(total_successes) as total_successes ,
+        SUM(total_rejected) as total_rejected,
+        SUM(suspect_device_from_source) as suspect_device_from_source,
+        SUM(suspect_ip_from_source) as suspect_ip_from_source,
+        values(src) as src,
+        values(dest) as dest group by externalSessionId, okta_user_id
+    | ROUND(total_successes/total_pushes,2) as ratio
+    | WHERE ratio < .5 AND total_pushes > 2
+        OR total_rejected > 0
+        AND suspect_device_from_source > 0
+        AND suspect_ip_from_source > 0
+| COUNT by ratio,okta_user_id, externalSessionId, src, dest, total_pushes, total_successes, total_rejected, suspect_device_from_source, suspect_ip_from_source
