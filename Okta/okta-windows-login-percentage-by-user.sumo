@@ -1,0 +1,38 @@
+// Okta report for users with more than 5% of SSO authentican events coming from Windows Devices.
+_sourceCategory=security/okta
+    | JSON field=_raw "eventType" as event_type NODROP
+    | JSON field=_raw "actor.alternateId" as okta_user_id NODROP
+    | JSON field=_raw "target[0].alternateId" as targetID NODROP
+    | JSON field=_raw "client.userAgent.os" as os NODROP
+    | JSON field=_raw "client.ipAddress" as client_ip NODROP
+    //  UPDATE okta_user_id to match your domain
+    | WHERE okta_user_id matches "*@company.com"
+    | WHERE event_type = "user.authentication.sso"
+    | IF (os matches "*",1,0) as total_os
+    | IF (os = "Mac OS X",1,0) as total_macos
+    | IF (os matches "Windows*",1,0) as total_windows
+    | IF (os matches "*iPhone*"or os = "iOS",1,0) as total_iphone
+    | IF (os = "Linux",1,0) as total_linux
+    | IF (os matches "Android*",1,0) as total_android
+    | IF (os = "Ubuntu",1,0) as total_ubuntu
+    | IF (os matches "*iPad*",1,0) as total_ipad
+    | IF (os = "Unknow" or os = "unknown",1,0) as total_unknown
+    | SUM(total_os) as total_os,
+        SUM(total_macos) as total_macos,
+        SUM(total_windows) as total_windows,
+        SUM(total_iphone) as total_iphone,
+        SUM(total_linux) as total_linux,
+        SUM(total_android) as total_android,
+        SUM(total_ubuntu) as total_ubuntu,
+        SUM(total_ipad) as total_ipad,
+        SUM(total_unknown) as total_unknown,
+        Values(targetID) as targetID,
+        Values(client_ip) as client_ip
+        by okta_user_id
+    // Update total_windows below with the OS report you want
+    | ROUND(total_windows/total_os,2) as ratio
+    | (ratio*100) as percentage
+    | WHERE percentage >= 5 
+    | COUNT by okta_user_id,percentage
+    | FIELDS - _count 
+    | SORT by percentage
