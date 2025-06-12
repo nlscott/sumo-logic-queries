@@ -1,0 +1,50 @@
+_sourceCategory="security/netskope"
+    [subquery:_sourceCategory="security/netskope"
+        | JSON "access_method", "action", "activity","app", "category" NODROP 
+        | JSON "domain", "url", "timestamp", "hostname", "file_type" NODROP
+        | JSON "dstip", "eventType", "os_version", "srcip", "user", "from_user" NODROP 
+        | JSON "alert", "alert_name", "alert_type", "cci", "ccl", "browser" NODROP
+        | JSON "browser_version", "device", "os", "os_version", "useragent" NODROP
+        | JSON "object", "object_type", "page", "page_site", "object_id" NODROP
+        | FORMATDATE(toLong(timestamp*1000), "MM-dd-yyyy HH:mm:ss") as time_stamp
+        | WHERE alert = "yes" 
+            AND !(isBlank(to_user))
+        | WHERE !(isBlank(justification_reason))
+            AND justification_reason not in (
+                "Not entered by user",
+                "Notification timed out. Canceling the activity"
+                )
+        | COMPOSE user keywords
+    ]
+    | JSON "access_method", "action", "activity","app", "category", "policy", "to_user", "alert" NODROP 
+    | JSON "domain", "url", "timestamp", "hostname", "file_type","app_activity" NODROP
+    | JSON "dstip", "eventType", "os_version", "srcip", "user", "from_user" NODROP 
+    | JSON "alert", "alert_name", "alert_type", "cci", "ccl", "browser" NODROP
+    | JSON "browser_version", "device", "os", "os_version", "useragent" NODROP
+    | JSON "object", "object_type", "page", "page_site", "object_id", "justification_reason" NODROP
+    | FORMATDATE(toLong(timestamp*1000), "MM-dd-yyyy HH:mm:ss") as time_stamp
+    | JOIN
+        (JSON "to_user" NODROP
+            | WHERE alert = "yes"
+                AND policy = "[DLP] Warn Google Drive External Sharing"
+                AND action = "proceed"
+                AND !(isBlank(to_user))   
+            | WHERE !(isBlank(justification_reason))
+                AND justification_reason not in (
+                    "Not entered by user",
+                    "Notification timed out. Canceling the activity"
+                )
+            | FIELDS time_stamp, user, to_user, justification_reason, srcip, hostname, browser, 
+                os_version, policy, object_type ) as share,
+        (JSON "app_activity", "user", "object", "object_id", "access_method", "app" NODROP
+            | JSON field=object_id "id" as doc_id NODROP
+            | WHERE access_method = "CASB API"
+                AND app = "Google Drive"
+                AND app_activity = "acl_change--change_user_access"
+                AND object != "Untitled document"
+           ) as doc
+        on share.user = doc.user
+    | DEDUP by doc_doc_id
+    | COUNT by share_time_stamp, share_user, share_to_user, share_justification_reason, doc_object, 
+        doc_doc_id, share_srcip, share_hostname, share_browser, share_os_version, share_policy, share_object_type
+    | SORT by share_time_stamp
