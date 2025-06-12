@@ -1,0 +1,10 @@
+_sourceCategory=logarchive/aws/waf  "Bearer"
+    | JSON "timestamp", "ja3Fingerprint" NODROP
+    | JSON "httpRequest.headers" as headers NODROP
+    | TOLONG(timestamp) as eventTimeInEpochMs
+    | FORMATDATE(eventTimeInEpochMs, "MM-dd-yyyy HH:MM:SS") as eventTimeHuman
+    | PARSE regex field=headers "\"name\":\"[A|a]uthorization\",\"value\":\"(?<authorization>[^\"]*)" NODROP
+    // | PARSE field=headers "authorization\",\"value\":\"Bearer*\"" as bearer NODROP
+    // | REPLACE(headers, /Bearer\s+([A-Za-z0-9\-\._~\+\/]+=*)/i, "Bearer") as bearer
+    | COUNT by eventTimeHuman, Authorization, headers
+    | SORT by eventTimeHuman

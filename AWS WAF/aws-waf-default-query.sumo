@@ -1,0 +1,25 @@
+
+_source="AWS - WAF" and _collector="AWS-Log Archive"
+    | JSON "timestamp", "webaclId", "action", "httpSourceId", "httpRequest" NODROP
+    | JSON "httpSourceName", "ja3Fingerprint", "ja4Fingerprint", "labels"  NODROP
+    | JSON "terminatingRuleId", "terminatingRuleType", "ruleGroupList" NODROP
+    | JSON "httpRequest.headers" as headers NODROP
+    | JSON field=httpRequest "clientIp" AS clientIp NODROP
+    | JSON field=httpRequest "country" AS country NODROP
+    | JSON field=httpRequest "uri" AS uri NODROP
+    | JSON field=httpRequest "httpMethod" AS httpMethod NODROP
+    | PARSE regex field=headers  "\"name\":\"[A|a]uthorization\",\"value\":\"Bearer(?<bearer>[^\"]*)" NODROP
+    | PARSE regex field=headers "\"name\":\"[H|h]ost\",\"value\":\"(?<host>[^\"]*)" NODROP
+    | PARSE regex field=headers "\"name\":\"[U|u]ser-[A|a]gent\",\"value\":\"(?<user_agent>[^\"]*)" NODROP
+    | PARSE regex field=labels "awswaf:clientip:geo:country:(?<label_country>[^\"]*)" NODROP
+    | PARSE regex field=labels "awswaf:clientip:geo:region:(?<label_region>[^\"]*)" NODROP
+    | PARSE regex field=labels "awswaf:managed:token:(?<label_token>[^\"]*)" NODROP
+    | PARSE regex field=labels "awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\"]*)" NODROP
+    | PARSE regex field=labels "awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\"]*)" NODROP
+    | PARSE regex field=labels "awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\"]*)" NODROP
+    | TOLONG(timestamp) as eventTimeInEpochMs
+    | FORMATDATE(eventTimeInEpochMs, "MM-dd-yyyy HH:MM:SS") as eventTimeHuman
+    | COUNT by eventTimeHuman, action, webaclId, httpSourceId, terminatingRuleId, terminatingRuleType, httpSourceName,
+        clientIp, country, uri, httpMethod, bearer, host, user_agent, label_country,label_region,
+        label_token, label_bot_category,label_bot_name,label_bot_signal, ja3Fingerprint, ja4Fingerprint
+    | SORT by eventTimeHuman
