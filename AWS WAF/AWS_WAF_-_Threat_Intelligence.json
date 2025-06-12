@@ -1,0 +1,503 @@
+{
+    "type": "DashboardV2SyncDefinition",
+    "name": "AWS WAF - Threat Intelligence",
+    "description": "See details of threats related to traffic allowed and blocked by AWS WAF.",
+    "title": "AWS WAF - Threat Intelligence",
+    "theme": "Dark",
+    "topologyLabelMap": {
+        "data": {}
+    },
+    "refreshInterval": 0,
+    "timeRange": {
+        "type": "BeginBoundedTimeRange",
+        "from": {
+            "type": "RelativeTimeRangeBoundary",
+            "relativeTime": "-1d"
+        },
+        "to": null
+    },
+    "layout": {
+        "layoutType": "Grid",
+        "layoutStructures": [
+            {
+                "key": "panela8081a31b39a5b48",
+                "structure": "{\"height\":1,\"width\":12,\"x\":0,\"y\":0}"
+            },
+            {
+                "key": "panel8ce61da9894c784f",
+                "structure": "{\"height\":1,\"width\":12,\"x\":12,\"y\":0}"
+            },
+            {
+                "key": "panel93715f0c9dcef943",
+                "structure": "{\"height\":12,\"width\":12,\"x\":0,\"y\":1}"
+            },
+            {
+                "key": "panel4adb7d24a96f5a41",
+                "structure": "{\"height\":12,\"width\":12,\"x\":12,\"y\":1}"
+            },
+            {
+                "key": "panel8392e8ca9ab9ca4d",
+                "structure": "{\"height\":17,\"width\":12,\"x\":0,\"y\":31}"
+            },
+            {
+                "key": "panel7cf6faa99fa16849",
+                "structure": "{\"height\":17,\"width\":12,\"x\":12,\"y\":31}"
+            },
+            {
+                "key": "panel2a60da14bac9894a",
+                "structure": "{\"height\":5,\"width\":12,\"x\":0,\"y\":26}"
+            },
+            {
+                "key": "panel506559988334b849",
+                "structure": "{\"height\":5,\"width\":12,\"x\":12,\"y\":26}"
+            },
+            {
+                "key": "panel1cb83d1f934aeb43",
+                "structure": "{\"height\":8,\"width\":6,\"x\":6,\"y\":18}"
+            },
+            {
+                "key": "panel18056C9CA7D01B40",
+                "structure": "{\"height\":8,\"width\":6,\"x\":18,\"y\":18}"
+            },
+            {
+                "key": "panelC65BD1CB8C222B4E",
+                "structure": "{\"height\":8,\"width\":6,\"x\":12,\"y\":18}"
+            },
+            {
+                "key": "panel043F8852AB960845",
+                "structure": "{\"height\":8,\"width\":6,\"x\":0,\"y\":18}"
+            },
+            {
+                "key": "panel76FFBFA0AB506A44",
+                "structure": "{\"height\":5,\"width\":12,\"x\":12,\"y\":13}"
+            },
+            {
+                "key": "panelC45F45948458694E",
+                "structure": "{\"height\":5,\"width\":12,\"x\":0,\"y\":13}"
+            }
+        ]
+    },
+    "panels": [
+        {
+            "id": null,
+            "key": "panel1cb83d1f934aeb43",
+            "title": "Allowed Threat by Actors",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"pie\",\"displayType\":\"default\",\"fillOpacity\":1,\"startAngle\":270,\"innerRadius\":\"70%\",\"maxNumOfSlices\":\"10\",\"mode\":\"distribution\"},\"color\":{\"family\":\"Categorical Default\"},\"axes\":{\"axisX\":{\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"titleFontSize\":12,\"labelFontSize\":12}},\"legend\":{\"enabled\":false,\"wrap\":true,\"verticalAlign\":\"right\",\"showAsTable\":true},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"ALLOW\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | COUNT as allowed_ips by clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" \n        AND !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | SUM (allowed_ips) as threat_count by Actor",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panela8081a31b39a5b48",
+            "title": "Allowed",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"text\",\"displayType\":\"default\",\"mode\":\"TextPanel\"},\"legend\":{\"enabled\":false},\"text\":{\"format\":\"markdownV2\",\"fontSize\":14},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "TextPanel",
+            "text": ""
+        },
+        {
+            "id": null,
+            "key": "panel2a60da14bac9894a",
+            "title": "Allowed Threats Trend",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"area\",\"displayType\":\"default\",\"markerSize\":null,\"lineDashType\":\"solid\",\"markerType\":\"none\",\"lineThickness\":1,\"fillOpacity\":0.25,\"mode\":\"timeSeries\"},\"axes\":{\"axisX\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12,\"logarithmic\":false,\"gridColor\":\"\",\"minimum\":null,\"maximum\":null}},\"legend\":{\"enabled\":true,\"verticalAlign\":\"right\",\"fontSize\":12,\"maxHeight\":50,\"showAsTable\":true,\"wrap\":true},\"color\":{\"family\":\"Categorical Light\"},\"thresholdsSettings\":{\"fillRemainingGreen\":false,\"showThresholds\":false,\"numberThresholds\":{\"warning\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":80},\"critical\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":100}}},\"overrides\":[],\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "\n_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"ALLOW\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" and !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | TIMESLICE 5m\n    | COUNT _timeslice",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel8ce61da9894c784f",
+            "title": "Blocked",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"text\",\"displayType\":\"default\",\"mode\":\"TextPanel\"},\"legend\":{\"enabled\":false},\"text\":{\"format\":\"markdownV2\",\"fontSize\":14},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "TextPanel",
+            "text": ""
+        },
+        {
+            "id": null,
+            "key": "panel4adb7d24a96f5a41",
+            "title": "Unique Blocked Threats Map",
+            "visualSettings": "{\"general\":{\"mode\":\"map\",\"type\":\"map\"},\"map\":{\"mainMetric\":{}},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"BLOCK\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" and !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | LOOKUP latitude, longitude from geo://location on ip = clientIp\n    | COUNT by latitude, longitude",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel7cf6faa99fa16849",
+            "title": "Blocked Traffic by Malicious IPs",
+            "visualSettings": "{\"title\":{\"fontSize\":12},\"series\":{},\"general\":{\"type\":\"table\",\"fontSize\":12,\"mode\":\"timeSeries\"},\"thresholdsSettings\":{\"fillRemainingGreen\":false,\"showThresholds\":false,\"numberThresholds\":{\"warning\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":80},\"critical\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":100}}}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | WHERE action = \"BLOCK\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | COUNT as blocked_ips by clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | JSON field=raw \"labels[*].name\" as label_name \n    | REPLACE(label_name, \"\\\\/\",\"->\") as label_name\n    | REPLACE(label_name, \"\\\"\",\" \") as label_name\n    | WHERE  type = \"ip_address\" \n        AND !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | SUM (blocked_ips) as threat_count by clientip, malicious_confidence, Actor, label_name\n    | SORT by threat_count",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel506559988334b849",
+            "title": "Blocked Threats Trend",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"area\",\"displayType\":\"default\",\"markerSize\":null,\"lineDashType\":\"solid\",\"markerType\":\"none\",\"lineThickness\":1,\"fillOpacity\":0.25,\"mode\":\"timeSeries\"},\"axes\":{\"axisX\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12,\"logarithmic\":false,\"gridColor\":\"\",\"minimum\":null,\"maximum\":null}},\"legend\":{\"enabled\":true,\"verticalAlign\":\"right\",\"fontSize\":12,\"maxHeight\":50,\"showAsTable\":true,\"wrap\":true},\"color\":{\"family\":\"SET1\"},\"thresholdsSettings\":{\"fillRemainingGreen\":false,\"showThresholds\":false,\"numberThresholds\":{\"warning\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":80},\"critical\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":100}}},\"overrides\":[],\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "\n_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"BLOCK\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" and !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | TIMESLICE 5m\n    | COUNT _timeslice",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel8392e8ca9ab9ca4d",
+            "title": "Allowed Traffic by Malicious IPs",
+            "visualSettings": "{\"title\":{\"fontSize\":12},\"series\":{},\"general\":{\"type\":\"table\",\"fontSize\":12,\"mode\":\"timeSeries\"},\"thresholdsSettings\":{\"fillRemainingGreen\":false,\"showThresholds\":false,\"numberThresholds\":{\"warning\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":80},\"critical\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":100}}}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | WHERE action = \"ALLOW\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | COUNT as allowed_ips by clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | JSON field=raw \"labels[*].name\" as label_name \n    | REPLACE(label_name, \"\\\\/\",\"->\") as label_name\n    | REPLACE(label_name, \"\\\"\",\" \") as label_name\n    | WHERE  type = \"ip_address\" \n        AND !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | SUM (allowed_ips) as threat_count by clientip, malicious_confidence, Actor, label_name\n    | SORT by threat_count",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel93715f0c9dcef943",
+            "title": "Unique Allowed Threats Map",
+            "visualSettings": "{\"general\":{\"mode\":\"map\",\"type\":\"map\"},\"map\":{\"mainMetric\":{}},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"ALLOW\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" and !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | LOOKUP latitude, longitude from geo://location on ip = clientIp\n    | COUNT by latitude, longitude",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel18056C9CA7D01B40",
+            "title": "Blocked Threats by Actors",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"pie\",\"displayType\":\"default\",\"fillOpacity\":1,\"startAngle\":270,\"innerRadius\":\"70%\",\"maxNumOfSlices\":\"10\",\"mode\":\"distribution\"},\"color\":{\"family\":\"Diverging 2\"},\"axes\":{\"axisX\":{\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"titleFontSize\":12,\"labelFontSize\":12}},\"legend\":{\"enabled\":false,\"wrap\":true,\"verticalAlign\":\"right\",\"showAsTable\":true},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"BLOCK\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | COUNT as blocked_ips by clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" \n        AND !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor   \n    | WHERE actor matches \"{{actor}}\"\n    | SUM (blocked_ips) as threat_count by Actor",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panelC65BD1CB8C222B4E",
+            "title": "Blocked Traffic by Threat Confidence",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"pie\",\"displayType\":\"default\",\"fillOpacity\":1,\"startAngle\":270,\"innerRadius\":\"70%\",\"maxNumOfSlices\":\"10\",\"mode\":\"distribution\"},\"color\":{\"family\":\"Diverging 2\"},\"axes\":{\"axisX\":{\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"titleFontSize\":12,\"labelFontSize\":12}},\"legend\":{\"enabled\":false,\"wrap\":true,\"verticalAlign\":\"right\",\"showAsTable\":true},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"BLOCK\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | COUNT as blocked_ips by clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" \n        AND !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | SUM (blocked_ips) as threat_count by malicious_confidence\n    | SORT by threat_count",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel043F8852AB960845",
+            "title": "Allowed Traffic by Threat Confidence",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"general\":{\"type\":\"pie\",\"displayType\":\"default\",\"fillOpacity\":1,\"startAngle\":270,\"innerRadius\":\"70%\",\"maxNumOfSlices\":\"10\",\"mode\":\"distribution\"},\"color\":{\"family\":\"Categorical Default\"},\"axes\":{\"axisX\":{\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"titleFontSize\":12,\"labelFontSize\":12}},\"legend\":{\"enabled\":false,\"wrap\":true,\"verticalAlign\":\"right\",\"showAsTable\":true},\"series\":{}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"ALLOW\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | COUNT as allowed_ips by clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" \n        AND !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | SUM (allowed_ips) as threat_count by malicious_confidence\n    | SORT by threat_count",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panel76FFBFA0AB506A44",
+            "title": "Blocked by Country",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"axes\":{\"axisX\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12,\"logarithmic\":false,\"gridColor\":\"\",\"minimum\":null,\"maximum\":null}},\"legend\":{\"enabled\":true,\"verticalAlign\":\"right\",\"fontSize\":12,\"maxHeight\":50,\"showAsTable\":true,\"wrap\":true,\"maxWidth\":400,\"shownStatistics\":[\"latest\"]},\"color\":{\"family\":\"SET1\"},\"thresholdsSettings\":{\"fillRemainingGreen\":false,\"showThresholds\":false,\"numberThresholds\":{\"warning\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":80},\"critical\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":100}}},\"overrides\":[],\"series\":{},\"general\":{\"type\":\"column\",\"displayType\":\"stacked\",\"roundDataPoints\":true,\"fillOpacity\":1,\"mode\":\"timeSeries\"}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "\n_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"BLOCK\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | LOOKUP latitude, longitude, country_code, country_name, region, city, postal_code from geo://location on ip = clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" and !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | TIMESLICE 30m\n    | COUNT by country_name, _timeslice\n    | TRANSPOSE row _timeslice column country_name",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        },
+        {
+            "id": null,
+            "key": "panelC45F45948458694E",
+            "title": "Allowed by Country",
+            "visualSettings": "{\"title\":{\"fontSize\":14},\"axes\":{\"axisX\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12},\"axisY\":{\"hideLabels\":false,\"title\":\"\",\"titleFontSize\":12,\"labelFontSize\":12,\"logarithmic\":false,\"gridColor\":\"\",\"minimum\":null,\"maximum\":null}},\"legend\":{\"enabled\":true,\"verticalAlign\":\"right\",\"fontSize\":12,\"maxHeight\":50,\"showAsTable\":true,\"wrap\":true,\"maxWidth\":399,\"shownStatistics\":[\"latest\"]},\"color\":{\"family\":\"Categorical Default\"},\"thresholdsSettings\":{\"fillRemainingGreen\":false,\"showThresholds\":false,\"numberThresholds\":{\"warning\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":80},\"critical\":{\"display\":true,\"comparator\":\"greater_or_equal\",\"value\":100}}},\"overrides\":[],\"series\":{},\"general\":{\"type\":\"column\",\"displayType\":\"stacked\",\"roundDataPoints\":true,\"fillOpacity\":1,\"mode\":\"timeSeries\"}}",
+            "keepVisualSettingsConsistentWithParent": true,
+            "panelType": "SumoSearchPanel",
+            "queries": [
+                {
+                    "transient": false,
+                    "queryString": "\n_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"ALLOW\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | LOOKUP latitude, longitude, country_code, country_name, region, city, postal_code from geo://location on ip = clientIp\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" and !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as Actor\n    | WHERE actor matches \"{{actor}}\"\n    | TIMESLICE 30m\n    | COUNT by country_name, _timeslice\n    | TRANSPOSE row _timeslice column country_name",
+                    "queryType": "Logs",
+                    "queryKey": "A",
+                    "metricsQueryMode": null,
+                    "metricsQueryData": null,
+                    "tracesQueryData": null,
+                    "spansQueryData": null,
+                    "parseMode": "Manual",
+                    "timeSource": "Message",
+                    "outputCardinalityLimit": 1000
+                }
+            ],
+            "description": null,
+            "timeRange": null,
+            "coloringRules": null,
+            "linkedDashboards": []
+        }
+    ],
+    "variables": [
+        {
+            "id": null,
+            "name": "clientIp",
+            "displayName": "clientIp",
+            "defaultValue": "*",
+            "sourceDefinition": {
+                "variableSourceType": "LogQueryVariableSourceDefinition",
+                "query": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP",
+                "field": "clientIp"
+            },
+            "allowMultiSelect": false,
+            "includeAllOption": true,
+            "hideFromUI": false,
+            "valueType": "Any"
+        },
+        {
+            "id": null,
+            "name": "httpMethod",
+            "displayName": "httpMethod",
+            "defaultValue": "*",
+            "sourceDefinition": {
+                "variableSourceType": "LogQueryVariableSourceDefinition",
+                "query": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP",
+                "field": "httpMethod"
+            },
+            "allowMultiSelect": false,
+            "includeAllOption": true,
+            "hideFromUI": false,
+            "valueType": "Any"
+        },
+        {
+            "id": null,
+            "name": "terminatingRuleId",
+            "displayName": "terminatingRuleId",
+            "defaultValue": "*",
+            "sourceDefinition": {
+                "variableSourceType": "LogQueryVariableSourceDefinition",
+                "query": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP",
+                "field": "terminatingRuleId"
+            },
+            "allowMultiSelect": false,
+            "includeAllOption": true,
+            "hideFromUI": false,
+            "valueType": "Any"
+        },
+        {
+            "id": null,
+            "name": "terminatingRuleType",
+            "displayName": "terminatingRuleType",
+            "defaultValue": "*",
+            "sourceDefinition": {
+                "variableSourceType": "LogQueryVariableSourceDefinition",
+                "query": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP",
+                "field": "terminatingRuleType"
+            },
+            "allowMultiSelect": false,
+            "includeAllOption": true,
+            "hideFromUI": false,
+            "valueType": "Any"
+        },
+        {
+            "id": null,
+            "name": "actor",
+            "displayName": "actor",
+            "defaultValue": "*",
+            "sourceDefinition": {
+                "variableSourceType": "LogQueryVariableSourceDefinition",
+                "query": "_sourceCategory=logarchive/aws/waf \n    | JSON \"timestamp\", \"webaclId\", \"action\", \"httpSourceId\", \"httpRequest\" NODROP\n    | JSON \"httpSourceName\", \"ja3Fingerprint\", \"ja4Fingerprint\", \"labels\"  NODROP\n    | JSON \"terminatingRuleId\", \"terminatingRuleType\", \"ruleGroupList\" NODROP\n    | JSON \"httpRequest.headers\" as headers NODROP\n    | JSON field=httpRequest \"clientIp\" AS clientIp NODROP\n    | JSON field=httpRequest \"country\" AS country NODROP\n    | JSON field=httpRequest \"uri\" AS uri NODROP\n    | JSON field=httpRequest \"httpMethod\" AS httpMethod NODROP\n    | PARSE regex field=headers  \"\\\"name\\\":\\\"[A|a]uthorization\\\",\\\"value\\\":\\\"Bearer(?<bearer>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[H|h]ost\\\",\\\"value\\\":\\\"(?<host>[^\\\"]*)\" NODROP\n    | PARSE regex field=headers \"\\\"name\\\":\\\"[U|u]ser-[A|a]gent\\\",\\\"value\\\":\\\"(?<user_agent>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:country:(?<label_country>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:clientip:geo:region:(?<label_region>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:token:(?<label_token>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:category:(?<label_bot_category>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:bot:name:(?<label_bot_name>[^\\\"]*)\" NODROP\n    | PARSE regex field=labels \"awswaf:managed:aws:bot-control:signal:(?<label_bot_signal>[^\\\"]*)\" NODROP\n    | WHERE action = \"ALLOW\"\n    | WHERE clientIp matches \"{{clientIp}}\"\n    | WHERE httpMethod matches \"{{httpMethod}}\"\n    | WHERE terminatingRuleId matches \"{{terminatingRuleId}}\"\n    | WHERE terminatingRuleType matches \"{{terminatingRuleType}}\"\n    | WHERE ja3Fingerprint matches \"{{ja3Fingerprint}}\"\n    | WHERE ja4Fingerprint matches \"{{ja4Fingerprint}}\"\n    | LOOKUP type, actor, raw, threatlevel as malicious_confidence from sumo://threat/cs on threat=clientIp \n    | WHERE  type = \"ip_address\" and !isNull(malicious_confidence)\n    | IF (isEmpty(actor), \"Unassigned\", actor) as actor",
+                "field": "actor"
+            },
+            "allowMultiSelect": false,
+            "includeAllOption": true,
+            "hideFromUI": false,
+            "valueType": "Any"
+        }
+    ],
+    "coloringRules": [],
+    "schedules": null
+}

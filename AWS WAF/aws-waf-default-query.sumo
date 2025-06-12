@@ -1,5 +1,4 @@
-
-_source="AWS - WAF" and _collector="AWS-Log Archive"
+_sourceCategory=logarchive/aws/waf 
     | JSON "timestamp", "webaclId", "action", "httpSourceId", "httpRequest" NODROP
     | JSON "httpSourceName", "ja3Fingerprint", "ja4Fingerprint", "labels"  NODROP
     | JSON "terminatingRuleId", "terminatingRuleType", "ruleGroupList" NODROP
