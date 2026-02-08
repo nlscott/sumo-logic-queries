@@ -1,0 +1,39 @@
+// Converting timestamps to a standard UTC in different log sources
+
+
+// Crowdstrike
+| TOLONG(_messageTime) as eventTimeInEpochMs
+| FORMATDATE(eventTimeInEpochMs, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+| FORMATDATE(eventTimeInEpochMs, "yyyy-MM-dd HH:mm:ss zzz", "America/New_York") as event_time_est
+
+// Okta
+| PARSEDATE(eventTime, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'","Etc/UTC") as milliseconds
+| FORMATDATE(milliseconds, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+| FORMATDATE(milliseconds, "yyyy-MM-dd HH:mm:ss zzz", "America/New_York") as event_time_est
+
+// Netskope
+| TOLONG(timestamp*1000) as timestamp
+| FORMATDATE(timestamp, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+| FORMATDATE(timestamp, "yyyy-MM-dd HH:mm:ss zzz", "America/New_York") as event_time_est
+
+// Jamf Protect
+| TOLONG(time*1000) as time_stamp
+| FORMATDATE(time_stamp, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+| FORMATDATE(time_stamp, "yyyy-MM-dd HH:mm:ss zzz", "America/New_York") as event_time_est
+
+// SALESFORCE
+| PARSEDATE(TIMESTAMP_DERIVED, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'","Etc/UTC") as milliseconds
+| FORMATDATE(milliseconds, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+| FORMATDATE(milliseconds, "yyyy-MM-dd HH:mm:ss zzz", "America/New_York") as event_time_est
+
+// Cyberhaven
+| PARSEDATE(timestamp, "yyyy-MM-dd'T'HH:mm:ss","Etc/UTC") as milliseconds
+| FORMATDATE(milliseconds, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+| FORMATDATE(milliseconds, "yyyy-MM-dd HH:mm:ss zzz", "America/New_York") as event_time_est
+
+// AWS Cloudtrail
+| FORMATDATE(ms, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+| FORMATDATE(ms, "yyyy-MM-dd HH:mm:ss zzz", "America/New_York") as event_time_est
+
+// ConductorOne
+| FORMATDATE(time, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
