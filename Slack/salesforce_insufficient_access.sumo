@@ -1,0 +1,35 @@
+_sourceCategory="salesforce"
+    | JSON "ACCESS_ERROR", "ENTITY_TYPE", "ERROR_DESCRIPTION", "ERROR_TIMESTAMP", "EVENT_TYPE" NODROP
+    | JSON "REQUESTED_ACCESS_LEVEL", "TIMESTAMP_DERIVED", "USER_ID_DERIVED_LOOKUP" NODROP
+    | PARSEDATE(TIMESTAMP_DERIVED, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'","Etc/UCT") as milliseconds
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "Etc/UCT") as timestamp_utc
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "America/New_York") as timestamp_est
+    | WHERE !isNull(ACCESS_ERROR)
+    | WHERE !isNull(USER_ID_DERIVED_LOOKUP)
+    | WHERE EVENT_TYPE = "InsufficientAccess"
+    | COUNT by timestamp_utc, timestamp_est, USER_ID_DERIVED_LOOKUP, ACCESS_ERROR, ENTITY_TYPE,
+        EVENT_TYPE, REQUESTED_ACCESS_LEVEL,ERROR_DESCRIPTION
+
+
+
+_sourceCategory="salesforce"
+    | JSON "ACCESS_ERROR", "ENTITY_TYPE", "ERROR_DESCRIPTION", "ERROR_TIMESTAMP", "EVENT_TYPE" NODROP
+    | JSON "REQUESTED_ACCESS_LEVEL", "TIMESTAMP_DERIVED", "USER_ID_DERIVED_LOOKUP" NODROP
+    | PARSEDATE(TIMESTAMP_DERIVED, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'","Etc/UCT") as milliseconds
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "Etc/UCT") as timestamp_utc
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "America/New_York") as timestamp_est
+    | WHERE !isNull(ACCESS_ERROR)
+    | WHERE !isNull(USER_ID_DERIVED_LOOKUP)
+    | WHERE EVENT_TYPE = "InsufficientAccess"
+    | TIMESLICE 1h                              
+    | IF (EVENT_TYPE = "InsufficientAccess",1,0) as total_events
+    | SUM(total_events) as total_events,
+        COUNT_DISTINCT(ENTITY_TYPE) as ENTITY_TYPE_count,
+        VALUES(ENTITY_TYPE) as ENTITY_TYPEs,
+        VALUES(REQUESTED_ACCESS_LEVEL) as REQUESTED_ACCESS_LEVELs,
+        count_distinct(USER_ID_DERIVED_LOOKUP) as USER_ID_DERIVED_LOOKUPs
+        by USER_ID_DERIVED_LOOKUP, _timeslice
+    | WHERE total_events >= 50
+        AND ENTITY_TYPE_count >= 2
+    | COUNT by _timeslice, USER_ID_DERIVED_LOOKUP, total_events,ENTITY_TYPE_count,ENTITY_TYPEs,REQUESTED_ACCESS_LEVELs
+    | SORT by _timeslice

@@ -1,0 +1,32 @@
+// Salesforce - Login From Unexpected Country ------------------------------------------------------
+_sourceCategory="salesforce"
+    | JSON "BROWSER_TYPE", "CLIENT_IP", "COUNTRY_CODE", "EVENT_TYPE", "LOGIN_STATUS" NODROP
+    | JSON "LOGIN_URL", "RUN_TIME", "TIMESTAMP_DERIVED", "URI", "LOGIN_TYPE" NODROP
+    | JSON "USER_ID_DERIVED_LOOKUP", "USER_TYPE", "REQUEST_STATUS", "LOGIN_SUB_TYPE"  NODROP
+    | WHERE !isBlank(TIMESTAMP_DERIVED)
+    | PARSEDATE(TIMESTAMP_DERIVED, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'","Etc/UCT") as milliseconds
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "Etc/UTC") as event_time
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "America/New_York") as event_time_est
+    | USER_ID_DERIVED_LOOKUP as dp_id
+    | CLIENT_IP as source_ip
+    | WHERE EVENT_TYPE = "Login"
+    | WHERE !isBlank(COUNTRY_CODE) 
+    | WHERE COUNTRY_CODE NOT IN ("US", "GB", "CA", "IE", "EG")
+    | IF (LOGIN_TYPE = "i", "Remote Access 2.0", 
+        IF (LOGIN_TYPE = "I", "Other Apex API", 
+        IF (LOGIN_TYPE = "5", "SAML Idp Initiated SSO",
+        IF (LOGIN_TYPE = "8", "SAML Sfdc Initiated SSO",
+        IF (LOGIN_TYPE = "A", "Application",
+        IF (LOGIN_TYPE = "j", "Third Party SSO",
+        IF (LOGIN_TYPE = "6", "Remote Access Client",
+        IF (LOGIN_TYPE = "R", "Partner Product","UNKNOWN")))))))) as LOGIN_TYPE
+    | IF (REQUEST_STATUS = "S", "Success", 
+        IF (REQUEST_STATUS = "F", "Failure", 
+        IF (REQUEST_STATUS = "U", "Undefined",
+        IF (REQUEST_STATUS = "A", "Authorization Error",
+        IF (REQUEST_STATUS = "R", "Redirect",
+        IF (REQUEST_STATUS = "N", "Not Found", 
+        IF (isBlank(REQUEST_STATUS), "", "UNKNOWN"))))))) as REQUEST_STATUS
+    | COUNT by event_time, dp_id, EVENT_TYPE, LOGIN_TYPE, LOGIN_SUB_TYPE, LOGIN_STATUS, USER_TYPE, 
+        source_ip, COUNTRY_CODE, REQUEST_STATUS, LOGIN_URL, RUN_TIME, URI, BROWSER_TYPE, REQUEST_ID
+    | SORT by event_time

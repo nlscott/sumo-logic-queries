@@ -1,0 +1,36 @@
+// The "ApexCallout" event type logs every time your Salesforce code (Apex) reaches out to an 
+// external system (an API, a database, a third-party service, etc.).
+
+// Salesforce - Apex Call Out ----------------------------------------------------------------------
+_sourceCategory="salesforce"
+    | JSON "BOT_ID", "BOT_SESSION_ID", "CLIENT_IP", "EVENT_TYPE", "METHOD" NODROP
+    | JSON "REQUEST_SIZE", "RESPONSE_SIZE", "RUN_TIME", "STATUS_CODE", "SUCCESS" NODROP
+    | JSON "TIME", "TIMESTAMP_DERIVED", "TYPE", "URL", "USER_ID_DERIVED_LOOKUP"  NODROP
+    | WHERE !isBlank(TIMESTAMP_DERIVED)
+    | PARSEDATE(TIMESTAMP_DERIVED, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'","Etc/UCT") as milliseconds
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "Etc/UCT") as timestamp_utc
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "America/New_York") as timestamp_est
+    | WHERE EVENT_TYPE = "ApexCallout"
+    | WHERE METHOD = "POST"
+    | COUNT by timestamp_utc, USER_ID_DERIVED_LOOKUP, EVENT_TYPE, CLIENT_IP, METHOD,STATUS_CODE,
+        REQUEST_SIZE, RESPONSE_SIZE, RUN_TIME, TIME, TYPE, URL
+    | SORT by timestamp_utc
+
+
+// Salesforce - Apex Call Out ----------------------------------------------------------------------
+// domains by hour
+_sourceCategory="salesforce"
+    | JSON "BOT_ID", "BOT_SESSION_ID", "CLIENT_IP", "EVENT_TYPE", "METHOD" NODROP
+    | JSON "REQUEST_SIZE", "RESPONSE_SIZE", "RUN_TIME", "STATUS_CODE", "SUCCESS" NODROP
+    | JSON "TIME", "TIMESTAMP_DERIVED", "TYPE", "URL", "USER_ID_DERIVED_LOOKUP"  NODROP
+    | WHERE !isBlank(TIMESTAMP_DERIVED)
+    | PARSEDATE(TIMESTAMP_DERIVED, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'","Etc/UCT") as milliseconds
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "Etc/UCT") as timestamp_utc
+    | FORMATDATE(milliseconds, "MM-dd-yyyy HH:mm:ss zzz", "America/New_York") as timestamp_est
+    | WHERE EVENT_TYPE = "ApexCallout"
+    | REPLACE(url, "callout:", "https://") as URLs
+    | PARSE field=URLs "\"https://*" as domain NODROP
+    | PARSE field=domain "*/" as domain NODROP
+    | TIMESLICE 1h 
+    | COUNT by _timeslice, domain
+    | transpose row _timeslice column domain
