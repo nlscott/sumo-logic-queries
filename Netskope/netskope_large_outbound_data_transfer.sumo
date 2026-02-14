@@ -1,0 +1,23 @@
+// netskope_large_outbound_data_transfer ---------------------------------------
+// Detect 5GB outbound traffic in 10 minutes if detination not corp instanace
+_sourceCategory="security/netskope" 
+    | JSON "access_method", "action", "activity","app", "category" NODROP
+    | JSON "user", "timestamp" "domain", "url","os_version", "srcip"  NODROP
+    | JSON "dstip", "eventType","alert", "alert_name", "alert_type" NODROP
+    | JSON  "browser", "browser_version", "device","ccl", "hostname"  NODROP
+    | JSON  "os", "os_version", "useragent","file_type", "object" NODROP 
+    | JSON  "page", "page_site", "object_id", "object_type" NODROP
+    | WHERE activity = "Upload"
+    | TIMESLICE 10m
+    | SUM(file_size) 
+        as total_bytes 
+        by _timeslice, srcip, src_region, src_country, dstip, dst_region, 
+            dst_country, user, app, site, object, instance_id, GB
+    | WHERE total_bytes > 5000000000
+    | WHERE instance_id NOT IN (
+        "company.com", 
+        "company.net"
+        )
+    | total_bytes/1024/1024/1024 as GB
+    | ROUND(GB,2) as GB
+    | SORT by _timeslice

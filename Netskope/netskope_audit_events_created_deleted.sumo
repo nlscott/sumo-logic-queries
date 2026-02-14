@@ -1,0 +1,21 @@
+// netskope_audit_events_created_deleted ---------------------------------------
+// Shows created/deleted audit events. Used as a schedule search for changelog
+_sourceCategory="security/netskope" and _collector="Netskope"
+    | JSON "audit_log_event", "eventType", "severity_level", "timestamp" NODROP
+    | JSON "type", "user", "supporting_data" NODROP 
+    | JSON field=supporting_data "data_type" as data_type NODROP
+    | JSON field=supporting_data "data_values" as data_values NODROP
+    | TOLONG(timestamp*1000) as timestamp
+    | FORMATDATE(timestamp, "yyyy-MM-dd HH:mm:ss zzz", "Etc/UTC") as event_time
+    | REPLACE(data_values, "[","") as data_values
+    | REPLACE(data_values, "]","") as data_values
+    | REPLACE(data_values, "\"","") as data_values
+    | TRIM(data_values) as data_values
+    | WHERE eventType = "audit"
+    | WHERE audit_log_event matches "*created*"
+        OR audit_log_event matches "*Created*"
+        OR audit_log_event matches "*Deleted*"
+        OR audit_log_event matches "*deleted*"
+    | COUNT by event_time, user, audit_log_event, eventType, 
+        severity_level, type, data_values
+    | SORT by event_time
